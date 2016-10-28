@@ -18,6 +18,7 @@ class ProxyScraper {
             progress = new (require('progress'))(':bar :percent :current'  , {total: proxies.length});
         let working = [];
         this.log(`Testing ${proxies.length} proxies...`);
+        let self = this;
         return new Promise(function (resolve) {
             var count = proxies.length;
             proxies.map((proxy) => {
@@ -27,18 +28,16 @@ class ProxyScraper {
                     resolveWithFullResponse: true,
                     time : true
                 }).then((response) => {
-                    if(response.elapsedTime < minspeed)
-                        working.push({
-                            ip: proxy.ip,
-                            port: proxy.port,
-                            speed: response.elapsedTime
-                        });
+                    if(response.elapsedTime < minspeed) {
+                        proxy.speed = response.elapsedTime;
+                        working.push(proxy);
+                    }
                 }).catch((err) => {/*Ignored*/}).then(() => {
                     if(progress)
                         progress.tick();
                     count--;
                     if(count == 0){
-                        this.log("Sorting ...");
+                        self.log("Sorting ...");
                         resolve(working.sort((a , b) => a.speed - b.speed));
                     }
                 });
@@ -52,6 +51,7 @@ class ProxyScraper {
         for(let scraper in scrapers ) {
             proxies.push(scrapers[scraper]().then((proxies) => {
                 this.log("Found " + proxies.length + " proxies from " + scraper);
+                proxies.forEach((proxy) => proxy.source = scraper);
                 return proxies;
             }))
         }
