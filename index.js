@@ -10,18 +10,20 @@ class ProxyScraper {
         return this.scrapProxies().then((proxies) => this.testProxies(timeout , minspeed , proxies));
     }
 
-    testProxies (timeout , minspeed=Number.MAX_VALUE, proxies) {
+    testProxies (timeout , minspeed, proxies) {
+        if(!minspeed) minspeed = Number.MAX_VALUE;
         let request = requestp.defaults({ timeout });
         let progress;
         if(!this.quiet)
-            progress = new (require('progress'))(':bar :percent' , {total: proxies.length});
+            progress = new (require('progress'))(':bar :percent :current'  , {total: proxies.length});
         let working = [];
-        return new Promise(function (resolve , reject) {
+        this.log(`Testing ${proxies.length} proxies...`);
+        return new Promise(function (resolve) {
             var count = proxies.length;
             proxies.map((proxy) => {
                 return request({
                     uri: 'http://goo.gl/',
-                    proxy: `http://${proxy.ip}:${proxy.port}`,
+                    proxy: proxy.port == 443 ? `https://${proxy.ip}`: `http://${proxy.ip}:${proxy.port}`,
                     resolveWithFullResponse: true,
                     time : true
                 }).then((response) => {
@@ -31,12 +33,14 @@ class ProxyScraper {
                             port: proxy.port,
                             speed: response.elapsedTime
                         });
-                }).catch((err) => {}/*Ignored*/).then(() => {
+                }).catch((err) => {/*Ignored*/}).then(() => {
                     if(progress)
                         progress.tick();
                     count--;
-                    if(count == 0)
+                    if(count == 0){
+                        this.log("Sorting ...");
                         resolve(working.sort((a , b) => a.speed - b.speed));
+                    }
                 });
             })
         });
