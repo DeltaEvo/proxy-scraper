@@ -1,0 +1,23 @@
+{
+  "name": "proxy-scraper",
+  "version": "1.0.0",
+  "description": "Scrap proxis from the web",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DeltaEvolution/proxy-scraper.git"
+  },
+  "keywords": [
+    "proxy",
+    "scraper"
+  ],
+  "author": "Duarte David <deltaduartedavid@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/DeltaEvolution/proxy-scraper/issues"
+  },
+  "homepage": "https://github.com/DeltaEvolution/proxy-scraper#readme"
+}
