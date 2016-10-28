@@ -19,5 +19,11 @@
   "bugs": {
     "url": "https://github.com/DeltaEvolution/proxy-scraper/issues"
   },
-  "homepage": "https://github.com/DeltaEvolution/proxy-scraper#readme"
+  "homepage": "https://github.com/DeltaEvolution/proxy-scraper#readme",
+  "dependencies": {
+    "cheerio": "^0.22.0",
+    "progress": "^1.1.8",
+    "request": "^2.76.0",
+    "request-promise": "^4.1.1"
+  }
 }
