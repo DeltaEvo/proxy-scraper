@@ -1,3 +1,4 @@
+"use strict";
 const requestp = require("request-promise");
 
 class ProxyScraper {
