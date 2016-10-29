@@ -1,5 +1,5 @@
 "use strict";
-const requestp = require("request-promise");
+const request = require("request");
 
 class ProxyScraper {
     constructor (quiet) {
@@ -12,34 +12,42 @@ class ProxyScraper {
 
     testProxies (timeout , minspeed, proxies) {
         if(!minspeed) minspeed = Number.MAX_VALUE;
-        let request = requestp.defaults({ timeout });
-        let progress;
-        if(!this.quiet)
-            progress = new (require('progress'))(':bar :percent :current'  , {total: proxies.length});
-        let working = [];
+        let req = request.defaults({ timeout });
         this.log(`Testing ${proxies.length} proxies...`);
         let self = this;
         return new Promise(function (resolve) {
-            var count = proxies.length;
-            proxies.map((proxy) => {
-                return request({
-                    uri: 'http://goo.gl/',
-                    proxy: proxy.port == 443 ? `https://${proxy.ip}`: `http://${proxy.ip}:${proxy.port}`,
-                    resolveWithFullResponse: true,
-                    time : true
-                }).then((response) => {
-                    if(response.elapsedTime < minspeed) {
-                        proxy.speed = response.elapsedTime;
-                        working.push(proxy);
-                    }
-                }).catch((err) => {/*Ignored*/}).then(() => {
-                    if(progress)
-                        progress.tick();
-                    count--;
-                    if(count == 0){
+            let working = [];
+            let count = {
+                i: proxies.length,
+                progress: self.quiet ? null : new (require('progress'))(':bar :percent :current'  , {total: proxies.length}),
+
+                tick () {
+                    if(this.i > 0 && this.progress)
+                        this.progress.tick();
+                    this.i--;
+                    if(this.i == 0){
                         self.log("Sorting ...");
                         resolve(working.sort((a , b) => a.speed - b.speed));
                     }
+                }
+            };
+            proxies.forEach((proxy) => {
+                let r;
+                let t = setTimeout(() => {
+                    r.abort();
+                    count.tick();
+                }, timeout * 2);
+                r =  req({
+                    uri: 'http://goo.gl/',
+                    proxy: proxy.port == 443 ? `https://${proxy.ip}`: `http://${proxy.ip}:${proxy.port}`,
+                    time : true
+                } , (error, response) => {
+                    if(!error && response.elapsedTime < minspeed) {
+                        proxy.speed = response.elapsedTime;
+                        working.push(proxy);
+                    }
+                    clearTimeout(t);
+                    count.tick();
                 });
             })
         });
