@@ -61,7 +61,10 @@ class ProxyScraper {
                 this.log("Found " + proxies.length + " proxies from " + scraper);
                 proxies.forEach((proxy) => proxy.source = scraper);
                 return proxies;
-            }))
+            }).catch(() => {
+                console.log("Error while scraping proxies with " + scraper);
+                return [];
+            }));
         }
         return Promise.all(proxies).then((values) => values.reduce((prev , next) => prev.concat(next)) , []);
     }
