@@ -9,7 +9,7 @@ import os from 'os'
 const log = debug('proxy-scraper')
 
 export default class ProxyScraper {
-	constructor({ workerCount = os.cpus().length }) {
+	constructor({ workerCount = os.cpus().length } = {}) {
 		this._workers = []
 		for (let i = 0; i < workerCount; i++) {
 			log('Spawning worker %d', i)

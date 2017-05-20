@@ -95,15 +95,15 @@ function copyWorker() {
 			},
 			(err, result) => (err ? reject(err) : resolve(result))
 		)
+	).then(({ code, map }) =>
+		Promise.all([
+			fs.outputFile(join(FOLDER, WORKER), code),
+			fs.outputJson(join(FOLDER, WORKER + '.map'), map)
+		])
 	)
-		.then(({ code, map }) =>
-			Promise.all([
-				fs.outputFile(join(FOLDER, WORKER), code),
-				fs.outputJson(join(FOLDER, WORKER + '.map'), map)
-			])
-		)
 }
-fs.remove(FOLDER)
+fs
+	.remove(FOLDER)
 	.then(build)
 	.then(generateLoader)
 	.then(
