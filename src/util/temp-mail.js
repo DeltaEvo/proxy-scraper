@@ -1,4 +1,4 @@
-import TempMail from 'temp-mail'
+import { getInbox } from 'temp-mail'
 import debug from 'debug'
 
 const log = debug('proxy-scraper:temp-mail')
@@ -19,7 +19,7 @@ export function poll(email, interval = 5000, iterations = 20) {
 					count,
 					iterations
 				)
-				TempMail.getInbox(email)
+				getInbox(email)
 					.then(mails => {
 						resolve(mails)
 						clearInterval(id)

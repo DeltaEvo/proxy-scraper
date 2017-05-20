@@ -1,6 +1,6 @@
 {
   "name": "proxy-scraper",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "Scrap proxis from the web",
   "main": "lib/index.js",
   "files": [
