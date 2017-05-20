@@ -1,78 +1,115 @@
-"use strict";
-const request = require("request");
+import scrapers from './src/scrapers'
+import Lock from './src/util/promise-lock'
+import child from 'child_process'
+import path from 'path'
+import { Readable as ReadableStream } from 'stream'
+import debug from 'debug'
+import os from 'os'
 
-class ProxyScraper {
-    constructor (quiet) {
-        this.quiet = quiet;
-    }
+const log = debug('proxy-scraper')
 
-    getProxies (timeout , minspeed) {
-        return this.scrapProxies().then((proxies) => this.testProxies(timeout , minspeed , proxies));
-    }
+export default class ProxyScraper {
+	constructor({ workerCount = os.cpus().length }) {
+		this._workers = []
+		for (let i = 0; i < workerCount; i++) {
+			log('Spawning worker %d', i)
+			const worker = child.fork(path.join(__dirname, './src/worker.js'), [i])
+			worker.on('error', error => console.error(error))
+			this._workers.push(new Lock(worker))
+		}
+	}
 
-    testProxies (timeout , minspeed, proxies) {
-        if(!minspeed) minspeed = Number.MAX_VALUE;
-        let req = request.defaults({ timeout });
-        this.log(`Testing ${proxies.length} proxies...`);
-        let self = this;
-        return new Promise(function (resolve) {
-            let working = [];
-            let count = {
-                i: proxies.length,
-                progress: self.quiet ? null : new (require('progress'))(':bar :percent :current'  , {total: proxies.length}),
+	getProxies(timeout) {
+		return this.scrapProxies().then(proxies =>
+			this.testProxies(timeout, proxies)
+		)
+	}
 
-                tick () {
-                    if(this.i > 0 && this.progress)
-                        this.progress.tick();
-                    this.i--;
-                    if(this.i == 0){
-                        self.log("Sorting ...");
-                        resolve(working.sort((a , b) => a.speed - b.speed));
-                    }
-                }
-            };
-            proxies.forEach((proxy) => {
-                let r;
-                let t = setTimeout(() => {
-                    r.abort();
-                    count.tick();
-                }, timeout * 2);
-                r =  req({
-                    uri: 'http://goo.gl/',
-                    proxy: proxy.port == 443 ? `https://${proxy.ip}`: `http://${proxy.ip}:${proxy.port}`,
-                    time : true
-                } , (error, response) => {
-                    if(!error && response.elapsedTime < minspeed) {
-                        proxy.speed = response.elapsedTime;
-                        working.push(proxy);
-                    }
-                    clearTimeout(t);
-                    count.tick();
-                });
-            })
-        });
-    }
+	testProxies(timeout, proxies) {
+		const stream = new ReadableStream({ objectMode: true })
+		const proxiesCount = proxies.length
+		const queue = proxies.slice(0) //Clone it
+		stream._read = () => {
+			for (const worker of this._workers) {
+				let done = false
+				const run = () => {
+					if (queue.length) {
+						const proxy = queue.pop()
+						worker
+							.get(worker => {
+								const p = this._testProxy(
+									{
+										url: 'http://example.com/',
+										proxy: proxy.port == 443
+											? `https://${proxy.ip}`
+											: `http://${proxy.ip}:${proxy.port}`,
+										timeout
+									},
+									worker
+								)
+								return p
+							})
+							.then(time => {
+								done = true
+								proxy.time = time
+								log('Working proxy: %o', proxy)
+								stream.push(proxy)
+							})
+							.catch(e => null)
+							.then(() => {
+								stream.emit('progress', {
+									length: proxiesCount,
+									remaining: queue.length,
+									percentage: (1 - queue.length / proxiesCount) * 100
+								})
+								return done ? null : run()
+							})
+					} else {
+						stream.push(null)
+					}
+				}
+				run()
+			}
+		}
+		return stream
+	}
 
-    scrapProxies () {
-        let scrapers = require("./lib/scrapers");
-        let proxies = [];
-        for(let scraper in scrapers ) {
-            proxies.push(scrapers[scraper]().then((proxies) => {
-                this.log("Found " + proxies.length + " proxies from " + scraper);
-                proxies.forEach((proxy) => proxy.source = scraper);
-                return proxies;
-            }).catch(() => {
-                console.log("Error while scraping proxies with " + scraper);
-                return [];
-            }));
-        }
-        return Promise.all(proxies).then((values) => values.reduce((prev , next) => prev.concat(next)) , []);
-    }
+	_testProxy(proxy, worker) {
+		worker.send(proxy)
+		return new Promise((resolve, reject) => {
+			worker.once('message', data => {
+				if (data.working) {
+					resolve(data.time)
+				} else {
+					reject(data.error)
+				}
+			})
+		})
+	}
 
-    log (message) {
-        if(!this.quiet)
-            console.log(message);
-    }
+	scrapProxies() {
+		const proxies = []
+		log('Scrapers: %o', Object.keys(ProxyScraper.scrapers))
+		for (let scraper in ProxyScraper.scrapers) {
+			proxies.push(
+				scrapers
+					[scraper]()
+					.then((proxies = []) => {
+						log('Found %d proxies from %s', proxies.length, scraper)
+						proxies.forEach(proxy => (proxy.source = scraper))
+						return proxies
+					})
+					.catch(e => {
+						log('Error while scraping proxies with %s\n%o', scraper, e)
+						return []
+					})
+			)
+		}
+		return Promise.all(proxies).then(
+			values => values.reduce((prev, next) => prev.concat(next)),
+			[]
+		)
+	}
 }
 
-module.exports = ProxyScraper;
+ProxyScraper.scrapers = scrapers
