@@ -1,6 +1,7 @@
 import scrapers from './src/scrapers'
 import Lock from './src/util/promise-lock'
 import child from 'child_process'
+import fetch from 'node-fetch'
 import path from 'path'
 import { Readable as ReadableStream } from 'stream'
 import debug from 'debug'
@@ -36,8 +37,8 @@ export default class ProxyScraper {
 					if (queue.length) {
 						const proxy = queue.pop()
 						worker
-							.get(worker => {
-								const p = this._testProxy(
+							.get(worker =>
+								this._testProxy(
 									{
 										url: 'http://example.com/',
 										proxy: proxy.port == 443
@@ -47,15 +48,17 @@ export default class ProxyScraper {
 									},
 									worker
 								)
-								return p
-							})
+							)
 							.then(time => {
 								done = true
 								proxy.time = time
 								log('Working proxy: %o', proxy)
 								stream.push(proxy)
 							})
-							.catch(e => null)
+							.catch(e => {
+								if (e.type && e.type == 'missmatch')
+									log('Content missmatch %o for proxy %o', e, proxy)
+							})
 							.then(() => {
 								stream.emit('progress', {
 									length: proxiesCount,
@@ -71,11 +74,23 @@ export default class ProxyScraper {
 				run()
 			}
 		}
-		return stream
+		return fetch('http://example.com/')
+			.then(res => res.text())
+			.then(page =>
+				Promise.all(
+					this._workers.map(worker =>
+						worker.get(worker => this._setPage(page, worker))
+					)
+				)
+			)
+			.then(() => stream)
 	}
 
 	_testProxy(proxy, worker) {
-		worker.send(proxy)
+		worker.send({
+			event: 'test',
+			data: proxy
+		})
 		return new Promise((resolve, reject) => {
 			worker.once('message', data => {
 				if (data.working) {
@@ -84,6 +99,13 @@ export default class ProxyScraper {
 					reject(data.error)
 				}
 			})
+		})
+	}
+
+	_setPage(page, worker) {
+		worker.send({
+			event: 'page',
+			data: page
 		})
 	}
 

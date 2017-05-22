@@ -1,8 +1,8 @@
-import ProxyScraper from '..'
+import ProxyScraper from '../index.js'
 import { Transform as TransformStream } from 'stream'
 import { createWriteStream } from 'fs'
 
-const scraper = new ProxyScraper()
+const scraper = new ProxyScraper({ workerCount: 10 })
 
 scraper.getProxies(1000).then(stream => {
 	const toJson = new TransformStream({ objectMode: true })
