@@ -41,17 +41,16 @@ export default function scrap() {
 					.then(id => downloadProxyList(fetch, level, id))
 					.then(text =>
 						data.push(
-							extractProxies(text, {
-								anonimity: ANONIMITY_LEVELS.indexOf(level)
-							})
+							extractProxies(text, () => ({
+								anonimity: ANONIMITY_LEVELS.indexOf(level),
+								type: 'http'
+							}))
 						)
 					)
 					.then(() => data)
 			)
 		}
-		return chain.then(datas =>
-			datas.reduce((prev, next) => prev.concat(next), [])
-		)
+		return chain.then(datas => datas.reduce((prev, next) => prev.concat(next)))
 	})
 }
 

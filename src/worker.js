@@ -1,6 +1,7 @@
 import ProxyAgent from 'proxy-agent'
 import fetch from 'node-fetch'
 import debug from 'debug'
+import { parse } from 'url'
 const log = debug(`proxy-scraper:worker:${process.argv[2]}`)
 
 log('Worker started !')
@@ -19,11 +20,13 @@ process.on('message', msg => {
 })
 
 function testProxy({ url, method, proxy, timeout }) {
-	log('testing %s with proxy %s with %s ms of timeout', url, proxy, timeout)
+	log('testing %s with proxy %s and %s ms of timeout', url, proxy, timeout)
 	const startTime = Date.now()
+	const p = parse(proxy)
+	p.timeout = timeout
 	fetch(url, {
 		method: method || 'GET',
-		agent: new ProxyAgent(proxy),
+		agent: new ProxyAgent(p),
 		timeout
 	})
 		.then(res => {

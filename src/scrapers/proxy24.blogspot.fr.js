@@ -30,7 +30,7 @@ export default function scrap() {
 				.then(url => fetch(url))
 				.then(cheerio())
 				.then($ => $(source.selector).eq(0).text())
-				.then(proxies => extractProxies(proxies, { type: source.type }))
+				.then(proxies => extractProxies(proxies, () => ({ type: source.type })))
 		)
 	}
 	return Promise.all(result).then(datas =>

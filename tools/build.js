@@ -59,7 +59,7 @@ function build() {
 								}
 							]
 						],
-						plugins: ['external-helpers']
+						plugins: ['external-helpers', ['transform-object-rest-spread', { useBuiltIns: true }]]
 					})
 				]
 			}).then(bundle =>
@@ -91,7 +91,8 @@ function copyWorker() {
 							}
 						}
 					]
-				]
+				],
+				plugins: [['transform-object-rest-spread', { useBuiltIns: true }]]
 			},
 			(err, result) => (err ? reject(err) : resolve(result))
 		)

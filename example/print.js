@@ -4,15 +4,22 @@ import { createWriteStream } from 'fs'
 
 const scraper = new ProxyScraper({ workerCount: 10 })
 
-scraper.getProxies(1000).then(stream => {
+scraper.getProxies(200).then(stream => {
 	const toJson = new TransformStream({ objectMode: true })
 	toJson._transform = function(chunk, enc, cb) {
-		this.push(JSON.stringify(chunk) + '\n')
+		this.push(`Working ${JSON.stringify(chunk)}\n`)
 		cb()
 	}
 
 	stream.on('progress', progress => {
-		console.log('Progress ' + progress.percentage.toFixed(2))
+		console.log(
+			`Progress ${progress.percentage.toFixed(2)}% (${progress.length - progress.remaining}/${progress.length}) (Source: ${progress.source})`
+		)
+	})
+
+	stream.on('end', () => {
+		console.log('Stopping workers')
+		scraper.stop()
 	})
 
 	const jsonStream = stream.pipe(toJson)

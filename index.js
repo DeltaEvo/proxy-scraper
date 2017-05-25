@@ -9,6 +9,9 @@ import os from 'os'
 
 const log = debug('proxy-scraper')
 
+const TYPES = ['http', 'socks']
+const VALID_TYPES = ['socks', 'socks5', 'socks4', 'https', 'http']
+
 export default class ProxyScraper {
 	constructor({ workerCount = os.cpus().length } = {}) {
 		this._workers = []
@@ -34,16 +37,14 @@ export default class ProxyScraper {
 			for (const worker of this._workers) {
 				let done = false
 				const run = () => {
-					if (queue.length) {
+					if (queue.length > 0) {
 						const proxy = queue.pop()
 						worker
 							.get(worker =>
 								this._testProxy(
 									{
 										url: 'http://example.com/',
-										proxy: proxy.port == 443
-											? `https://${proxy.ip}`
-											: `http://${proxy.ip}:${proxy.port}`,
+										proxy: proxy.url(),
 										timeout
 									},
 									worker
@@ -63,7 +64,8 @@ export default class ProxyScraper {
 								stream.emit('progress', {
 									length: proxiesCount,
 									remaining: queue.length,
-									percentage: (1 - queue.length / proxiesCount) * 100
+									percentage: (1 - queue.length / proxiesCount) * 100,
+									source: proxy.source
 								})
 								return done ? null : run()
 							})
@@ -118,8 +120,9 @@ export default class ProxyScraper {
 					[scraper]()
 					.then((proxies = []) => {
 						log('Found %d proxies from %s', proxies.length, scraper)
-						proxies.forEach(proxy => (proxy.source = scraper))
 						return proxies
+							.map(proxy => this._aggregateProxy(proxy, scraper))
+							.reduce((prev, next) => prev.concat(next), [])
 					})
 					.catch(e => {
 						log('Error while scraping proxies with %s\n%o', scraper, e)
@@ -127,10 +130,32 @@ export default class ProxyScraper {
 					})
 			)
 		}
-		return Promise.all(proxies).then(
-			values => values.reduce((prev, next) => prev.concat(next)),
-			[]
+		return Promise.all(proxies).then(values =>
+			values.reduce((prev, next) => prev.concat(next))
 		)
+	}
+
+	stop() {
+		for (const worker of this._workers) {
+			worker.get(worker => worker.kill())
+		}
+	}
+
+	_aggregateProxy(proxy, source) {
+		const aproxy = {
+			source,
+			url() {
+				return `${this.type}://${this.ip}:${this.port}`
+			},
+			...proxy
+		}
+
+		return VALID_TYPES.includes(aproxy.type)
+			? aproxy
+			: TYPES.map(type => ({
+					...aproxy,
+					type
+				}))
 	}
 }
 
