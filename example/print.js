@@ -4,7 +4,7 @@ import { createWriteStream } from 'fs'
 
 const scraper = new ProxyScraper({ workerCount: 10 })
 
-scraper.getProxies(200).then(stream => {
+scraper.getProxies(500).then(stream => {
 	const toJson = new TransformStream({ objectMode: true })
 	toJson._transform = function(chunk, enc, cb) {
 		this.push(`Working ${JSON.stringify(chunk)}\n`)

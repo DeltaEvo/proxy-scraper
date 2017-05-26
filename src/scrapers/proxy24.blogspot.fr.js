@@ -26,14 +26,23 @@ export default function scrap() {
 		result.push(
 			fetch(source.url)
 				.then(cheerio())
-				.then($ => $('.post-title > a').eq(0).attr('href')) //Only take first
-				.then(url => fetch(url))
-				.then(cheerio())
-				.then($ => $(source.selector).eq(0).text())
-				.then(proxies => extractProxies(proxies, () => ({ type: source.type })))
+				.then($ =>
+					Promise.all(
+						$('.post-title > a')
+							.map((i, e) =>
+								fetch($(e).attr('href'))
+									.then(cheerio())
+									.then($ => $(source.selector).eq(0).text())
+									.then(proxies =>
+										extractProxies(proxies, () => ({ type: source.type }))
+									)
+							)
+							.get()
+					).then(datas => datas.reduce((prev, next) => prev.concat(next)))
+				)
 		)
 	}
 	return Promise.all(result).then(datas =>
-		datas.reduce((prev, next) => prev.concat(next), [])
+		datas.reduce((prev, next) => prev.concat(next))
 	)
 }

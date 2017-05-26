@@ -67,7 +67,7 @@ export default class ProxyScraper {
 									percentage: (1 - queue.length / proxiesCount) * 100,
 									source: proxy.source
 								})
-								return done ? null : run()
+								if (!done) run()
 							})
 					} else {
 						stream.push(null)

@@ -2,7 +2,7 @@ import fetch from 'node-fetch'
 import cheerio from '../util/fetch-cheerio'
 
 export default function scrap() {
-	let promises = []
+	const promises = []
 	for (let offset = 0; offset < 1000; offset += 50) {
 		promises.push(
 			fetch(`http://proxydb.net/?limit=50&offset=${offset}`)
