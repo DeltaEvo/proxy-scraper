@@ -29,7 +29,7 @@ const WORKER = 'src/worker.js'
 
 function generateLoader(versions) {
 	const checks = VERSIONS.map(
-		ver => `if(v>${ver})module.exports=require('${versions.get(ver)}')\n`
+		ver => `if(v>=${ver})module.exports=require('${versions.get(ver)}')\n`
 	).reduce((prev, next) => (prev ? `${prev}else ${next}` : next))
 	return `var v=parseFloat(process.versions.node)\n${checks}`
 }
@@ -59,7 +59,10 @@ function build() {
 								}
 							]
 						],
-						plugins: ['external-helpers', ['transform-object-rest-spread', { useBuiltIns: true }]]
+						plugins: [
+							'external-helpers',
+							['transform-object-rest-spread', { useBuiltIns: true }]
+						]
 					})
 				]
 			}).then(bundle =>

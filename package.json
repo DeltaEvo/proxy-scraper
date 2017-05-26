@@ -1,6 +1,6 @@
 {
   "name": "proxy-scraper",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "description": "Scrap proxis from the web",
   "main": "lib/index.js",
   "files": [
@@ -30,8 +30,7 @@
     "cheerio": "^0.22.0",
     "debug": "^2.6.8",
     "form-data": "^2.1.4",
-    "node-fetch": "^1.6.3",
-    "progress": "^1.1.8",
+    "node-fetch": "^2.0.0-alpha",
     "proxy-agent": "^2.0.0",
     "socks-proxy-agent": "DeltaEvo/node-socks-proxy-agent",
     "temp-mail": "^2.0.0",
