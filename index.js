@@ -30,9 +30,11 @@ export default class ProxyScraper {
 	}
 
 	testProxies(timeout, proxies) {
+		log('Testing %d proxies with %d timeout', proxies.length, timeout)
 		const stream = new ReadableStream({ objectMode: true })
 		const proxiesCount = proxies.length
 		const queue = proxies.slice(0) //Clone it
+		let testedProxies = 0
 		stream._read = () => {
 			for (const worker of this._workers) {
 				let done = false
@@ -61,16 +63,18 @@ export default class ProxyScraper {
 									log('Content missmatch %o for proxy %o', e, proxy)
 							})
 							.then(() => {
+								testedProxies++
+								if(testedProxies === proxiesCount)
+									stream.push(null)
 								stream.emit('progress', {
 									length: proxiesCount,
-									remaining: queue.length,
-									percentage: (1 - queue.length / proxiesCount) * 100,
+									tested: testedProxies,
+									remaining: proxiesCount - testedProxies,
+									percentage: (testedProxies / proxiesCount) * 100,
 									source: proxy.source
 								})
 								if (!done) run()
 							})
-					} else {
-						stream.push(null)
 					}
 				}
 				run()

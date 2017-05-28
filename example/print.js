@@ -13,7 +13,7 @@ scraper.getProxies(500).then(stream => {
 
 	stream.on('progress', progress => {
 		console.log(
-			`Progress ${progress.percentage.toFixed(2)}% (${progress.length - progress.remaining}/${progress.length}) (Source: ${progress.source})`
+			`Progress ${progress.percentage.toFixed(2)}% (${progress.tested}/${progress.length}) (Source: ${progress.source})`
 		)
 	})
 
